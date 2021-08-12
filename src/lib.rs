@@ -41,7 +41,7 @@ impl LispType {
     pub fn num(&self) -> f64 {
         match self {
             Self::Number(n) => n.clone(),
-            _ => panic("Couldn't convert number."),
+            _ => panic!("Couldn't convert number."),
         }
     }
 }
@@ -77,14 +77,25 @@ impl Expression {
     pub fn create(name: &str, arg: Vec<LispType>) -> Self {
         match name {
             "+" => Self::new(
-                Box::new(|a: &mut [LispType]| LispType::Number(a[0].num() + a[1].num())),
+                Box::new(|a: &mut [LispType]| {
+                    LispType::Number(a[0].run().num() + a[1].run().num())
+                }),
                 arg,
             ),
             "=" => Self::new(
-                Box::new(|a: &mut [LispType]| LispType::Bool(a[0].to_string() == a[1].to_string())),
+                Box::new(|a: &mut [LispType]| {
+                    LispType::Bool(a[0].run().to_string() == a[1].run().to_string())
+                }),
                 arg,
             ),
-            _ => panic("invalid fn name!"),
+            "print" => Self::new(
+                Box::new(|a: &mut [LispType]| {
+                    println!("{}", a[0].to_string());
+                    LispType::Bool(false)
+                }),
+                arg,
+            ),
+            _ => panic!("invalid fn name!"),
         }
     }
 
@@ -107,9 +118,4 @@ impl Expression {
     pub fn run(&mut self) -> LispType {
         (*self.func)(&mut self.args)
     }
-}
-
-fn panic<T>(s: &str) -> T {
-    println!("{}", s);
-    std::process::exit(1);
 }

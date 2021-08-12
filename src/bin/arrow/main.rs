@@ -68,6 +68,7 @@ fn repl() {
 mod tests {
     use super::*;
 
+    #[test]
     fn test_handle_args() {
         let test = vec!["--version", "-h", "(message", "\"h\")"]
             .iter()
