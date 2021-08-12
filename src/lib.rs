@@ -1,3 +1,7 @@
+mod string;
+
+use crate::string::Append;
+
 pub enum LispType {
     Number(f64),
     String(String),
@@ -29,6 +33,20 @@ impl LispType {
         // }
     }
 
+    /// Run a [LispType]. This function will return a new
+    /// instance of itself (with the same data in it), except
+    /// when it is an Expression. Then it will execute the
+    /// [Expression].
+    ///
+    /// # Examples
+    /// ```
+    /// use arrow::LispType;
+    /// use arrow::Expression;
+    ///
+    /// let mut lt = LispType::Expression(Expression::create("*", vec![LispType::Number(2.),
+    ///                                                            LispType::Number(2.)]));
+    /// assert_eq!(lt.run().num(), 4.);
+    /// ```    
     pub fn run(&mut self) -> Self {
         match self {
             Self::Expression(e) => (*e).run(),
@@ -38,6 +56,18 @@ impl LispType {
         }
     }
 
+    /// Shortcut to get the [f64] out of the enum.
+    /// In every case, except if it is an [f64], it
+    /// will fail.
+    ///
+    /// # Examples
+    /// ```
+    /// use arrow::LispType;
+    ///
+    /// let lt = LispType::Number(1.);
+    ///
+    /// assert_eq!(lt.num(), 1.);
+    /// ```
     pub fn num(&self) -> f64 {
         match self {
             Self::Number(n) => n.clone(),
@@ -67,13 +97,42 @@ pub struct Expression {
 }
 
 impl Expression {
-    fn new(func: Box<dyn Fn(&mut [LispType]) -> LispType>, args: Vec<LispType>) -> Self {
+    /// Create a new instance of the [Expression] struct. Please
+    /// usually use the associated `create` method.
+    ///
+    /// # Example
+    /// ```
+    /// use arrow::Expression;
+    /// use arrow::LispType;
+    ///
+    /// let fun = Box::new(|a: &mut [LispType]| LispType::String(a[0].to_string()));
+    /// let data = vec![LispType::String("hw".to_string())];
+    /// let mut expr = Expression::new(fun, data);
+    ///
+    /// assert_eq!(expr.run().to_string(), "hw".to_string());
+    /// ```
+    pub fn new(func: Box<dyn Fn(&mut [LispType]) -> LispType>, args: Vec<LispType>) -> Self {
         Self {
             func: Box::new(func),
             args,
         }
     }
 
+    /// Create an new instance of the [Expression] struct. The first
+    /// parameter is the name of the function. The next is is a
+    /// [Vec<String>] with all the parameters. The parameters have
+    /// to be already converted into a LispType. That means, that
+    /// can be also be an Expression.
+    ///
+    /// # Examples
+    /// ```
+    /// use arrow::Expression;
+    /// use arrow::LispType;
+    ///
+    /// let mut expr = Expression::create("concat", vec![LispType::String("h".to_string()),
+    ///                                                  LispType::String("w".to_string())]);
+    /// assert_eq!(expr.run().to_string(), "hw".to_string());
+    /// ```
     pub fn create(name: &str, arg: Vec<LispType>) -> Self {
         match name {
             "+" => Self::new(
@@ -82,7 +141,19 @@ impl Expression {
                 }),
                 arg,
             ),
-            "=" => Self::new(
+            "*" => Self::new(
+                Box::new(|a: &mut [LispType]| {
+                    LispType::Number(a[0].run().num() * a[1].run().num())
+                }),
+                arg,
+            ),
+            "concat" => Self::new(
+                Box::new(|a: &mut [LispType]| {
+                    LispType::String(a[0].run().to_string().append(a[1].run().to_string()))
+                }),
+                arg,
+            ),
+            "==" => Self::new(
                 Box::new(|a: &mut [LispType]| {
                     LispType::Bool(a[0].run().to_string() == a[1].run().to_string())
                 }),
@@ -108,7 +179,7 @@ impl Expression {
     /// use arrow::LispType;
     ///
     /// let mut expr = Expression::create("+", vec![LispType::new(&["1".to_string()]),
-    ///	       					    LispType::new(&["2".to_string()])]);
+    ///                                             LispType::new(&["2".to_string()])]);
     /// let res = match expr.run() {
     ///     LispType::Number(n) => n,
     ///     _ => panic!(""),
