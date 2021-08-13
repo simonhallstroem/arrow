@@ -1,5 +1,5 @@
-use arrow::Expression;
-use arrow::LispType;
+use arrow::expression::Expression;
+use arrow::lisptype::LispType;
 
 #[test]
 fn test_simple_example_f() {
