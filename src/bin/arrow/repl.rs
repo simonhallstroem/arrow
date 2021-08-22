@@ -25,7 +25,7 @@ pub fn repl() {
         match input {
             "exit" => break,
             "help" => println!("{}", REPL_HELP),
-            _ => println!("Command not recognized."),
+            _ => println!("Command not recognized. Try: help"),
         }
     }
 }

@@ -1,0 +1,10 @@
+USAGE:
+    arrow [ARGS] | [CODE]
+
+ARGS: 
+    --version | -v   Print the version of arrow.
+    --help | -h      Print this message.
+
+CODE:
+This can be filled with standard LISP code. 
+Arrow will then try to evaluate it.

@@ -5,14 +5,14 @@ use arrow::lisptype::LispType;
 fn test_simple_example_f() {
     let mut test = LispType::Number(12.);
     let exp = 12.;
-    assert_eq!(test.run().num(), exp);
+    assert_eq!(test.run(&mut vec![]).num(&mut vec![]), exp);
 }
 
 #[test]
 fn test_simple_example_str() {
     let mut test = LispType::String("Hello".to_string());
     let exp = "Hello".to_string();
-    assert_eq!(test.run().to_string(), exp);
+    assert_eq!(test.run(&mut vec![]).to_string(&mut vec![]), exp);
 }
 
 #[test]
@@ -28,5 +28,5 @@ fn test_advanced_example() {
         ],
     ));
     let exp = 37.;
-    assert_eq!(test.run().num(), exp);
+    assert_eq!(test.run(&mut vec![]).num(&mut vec![]), exp);
 }

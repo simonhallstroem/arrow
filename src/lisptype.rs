@@ -5,6 +5,8 @@ pub enum LispType {
     String(String),
     Bool(bool),
     Expression(Expression),
+    Symbol(String),
+    Atom(String, Box<LispType>),
 }
 
 impl LispType {
@@ -43,14 +45,16 @@ impl LispType {
     ///
     /// let mut lt = LispType::Expression(Expression::create("*", vec![LispType::Number(2.),
     ///                                                            LispType::Number(2.)]));
-    /// assert_eq!(lt.run().num(), 4.);
+    /// assert_eq!(lt.run(&mut vec![]).num(&mut vec![]), 4.);
     /// ```    
-    pub fn run(&mut self) -> Self {
+    pub fn run(&mut self, args: &mut Vec<LispType>) -> Self {
         match self {
-            Self::Expression(e) => (*e).run(),
-            Self::Number(n) => Self::Number((*n).clone()),
+            Self::Expression(e) => (*e).run(args),
+            Self::Number(n) => Self::Number(*n),
             Self::String(s) => Self::String((*s).clone()),
-            Self::Bool(b) => Self::Bool((*b).clone()),
+            Self::Bool(b) => Self::Bool(*b),
+            Self::Symbol(s) => Self::Symbol((*s).clone()),
+            Self::Atom(_, _) => panic!("Cannot return atom!"),
         }
     }
 
@@ -64,11 +68,31 @@ impl LispType {
     ///
     /// let lt = LispType::Number(1.);
     ///
-    /// assert_eq!(lt.num(), 1.);
+    /// assert_eq!(lt.num(&mut vec![]), 1.);
     /// ```
-    pub fn num(&self) -> f64 {
+    pub fn num(&self, vars: &mut Vec<Self>) -> f64 {
         match self {
-            Self::Number(n) => n.clone(),
+            Self::Number(n) => *n,
+            Self::Symbol(s) => {
+                let mut res = 0.;
+                let mut flag = true;
+                vars.iter().for_each(|n| match n {
+                    Self::Atom(a, b) => {
+                        if a == s {
+                            flag = false;
+                            match **b {
+                                Self::Number(n) => res = n,
+                                _ => panic!("This shouldn't happen."),
+                            };
+                        }
+                    }
+                    _ => {}
+                });
+                if flag {
+                    panic!("Didn't find variable with that name.")
+                }
+                res
+            }
             _ => panic!("Couldn't convert number."),
         }
     }
@@ -89,24 +113,22 @@ impl LispType {
     /// ```
     pub fn bool(&self) -> bool {
         match self {
-            Self::Bool(b) => b.clone(),
-	    Self::String(s) => match s.as_str() {
-		"t" => true,
-		"nil" => false,
-		_ => panic!("Couldn't convert string to bool."),
-	    },
-	    Self::Number(n) => match &n.to_string()[..] {
-		"0" => false,
-		"1" => true,
-		_ => panic!("Number can't be converted."),
-	    },
+            Self::Bool(b) => *b,
+            Self::String(s) => match s.as_str() {
+                "t" => true,
+                "nil" => false,
+                _ => panic!("Couldn't convert string to bool."),
+            },
+            Self::Number(n) => match &n.to_string()[..] {
+                "0" => false,
+                "1" => true,
+                _ => panic!("Number can't be converted."),
+            },
             _ => panic!("Couldn't to bool."),
         }
     }
-}
 
-impl ToString for LispType {
-    fn to_string(&self) -> String {
+    pub fn to_string(&self, vars: &mut Vec<LispType>) -> String {
         match self {
             Self::String(s) => s.to_string(),
             Self::Number(n) => n.to_string(),
@@ -116,6 +138,31 @@ impl ToString for LispType {
             }
             .to_string(),
             Self::Expression(_) => panic!("cant convert closure to string."),
+            Self::Symbol(s) => {
+                let mut res = String::new();
+                let mut flag = true;
+                vars.iter().for_each(|n| match n {
+                    Self::Atom(a, b) => {
+                        if a == s {
+                            flag = false;
+                            res = (*b).to_string(&mut vec![]);
+                        }
+                    }
+                    _ => {}
+                });
+                if flag {
+                    panic!("Didn't find variable with that name.")
+                }
+                res
+            },
+            Self::Atom(a, b) => format!("( {} {} )", a, b.to_string(vars)),
         }
+    }
+
+    pub fn to_string_from_symbol(&self) -> String {
+	match self {
+	    Self::Symbol(s) => s.to_string(),
+	    _ => panic!("This should only be called if LispType is a Symbol.")
+	}
     }
 }

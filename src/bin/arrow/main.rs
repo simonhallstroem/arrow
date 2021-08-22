@@ -25,18 +25,8 @@ fn version() {
 }
 
 fn help() {
-    println!(
-        "USAGE:
-    arrow [ARGS] | [CODE]
-
-ARGS: 
-    --version | -v   Print the version of arrow.
-    --help | -h      Print this message.
-
-CODE:
-This can be filled with standard LISP code. 
-Arrow will then try to evaluate it."
-    );
+    let msg = include_bytes!("./assets/help.txt");
+    println!("{}", String::from_utf8_lossy(msg).trim_end());
 }
 
 #[cfg(test)]
