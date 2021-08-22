@@ -154,15 +154,15 @@ impl LispType {
                     panic!("Didn't find variable with that name.")
                 }
                 res
-            },
+            }
             Self::Atom(a, b) => format!("( {} {} )", a, b.to_string(vars)),
         }
     }
 
     pub fn to_string_from_symbol(&self) -> String {
-	match self {
-	    Self::Symbol(s) => s.to_string(),
-	    _ => panic!("This should only be called if LispType is a Symbol.")
-	}
+        match self {
+            Self::Symbol(s) => s.to_string(),
+            _ => panic!("This should only be called if LispType is a Symbol."),
+        }
     }
 }

@@ -33,7 +33,10 @@ fn test_create_concat() {
         LispType::String("w".to_string()),
     ];
     let mut expr = Expression::create(name, args);
-    assert_eq!(expr.run(&mut vec![]).to_string(&mut vec![]), "h w".to_string());
+    assert_eq!(
+        expr.run(&mut vec![]).to_string(&mut vec![]),
+        "h w".to_string()
+    );
 }
 
 #[test]
