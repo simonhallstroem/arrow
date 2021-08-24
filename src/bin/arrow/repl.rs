@@ -1,3 +1,7 @@
+use arrow::Arrow;
+use arrow::lisptype::LispType;
+
+
 const MESSAGE: &str = "Arrow: A LISP dialect.
 Version: ";
 
@@ -10,6 +14,8 @@ pub fn repl() {
     use std::io::{stdin, stdout};
 
     println!("{}{}", MESSAGE, env!("CARGO_PKG_VERSION"));
+
+    let mut lispfns: Arrow = Arrow::default();
 
     loop {
         let mut input = String::new();
@@ -25,7 +31,8 @@ pub fn repl() {
         match input {
             "exit" => break,
             "help" => println!("{}", REPL_HELP),
-            _ => println!("Command not recognized. Try: help"),
+            _ => lispfns = lispfns.add_function(&input),
         }
+
     }
 }

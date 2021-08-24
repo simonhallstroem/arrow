@@ -22,14 +22,14 @@ If you wan't to run the tests, just type this command and all tests
 will be run.
 
 #+begin_src sh
-$ cargo test
+$ cargo test --no-fail-fast
 #+end_src
 
 The complete build process can be done with this command:
 
 #+begin_src sh
 $ cargo build --release
-   Compiling arrow v0.1.0 (C:\Users\Dominik\Desktop\arrow)
+   Compiling arrow v0.1.0 (C:\...\arrow)
     Finished release [optimized] target(s) in 1.06s
 #+end_src
 

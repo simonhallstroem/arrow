@@ -50,14 +50,18 @@ impl Expression {
         match name {
             "defun" => Self::new(
                 Box::new(|a: &mut [LispType], v: &mut Vec<LispType>| {
-                    LispType::new(&[a
-                        .iter_mut()
-                        .skip(1)
-                        .map(|e| e.run(v))
-                        .collect::<Vec<LispType>>()
-                        .last()
-                        .unwrap()
-                        .to_string(v)])
+                    if a[0].to_string(&mut vec![]) == v[0].to_string(&mut vec![]) {
+                        LispType::new(&[a
+                            .iter_mut()
+                            .skip(1)
+                            .map(|e| e.run(v))
+                            .collect::<Vec<LispType>>()
+                            .last()
+                            .unwrap()
+                            .to_string(v)])
+                    } else {
+                        LispType::Bool(false)
+                    }
                 }),
                 arg,
             ),
