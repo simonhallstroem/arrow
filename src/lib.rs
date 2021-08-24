@@ -49,9 +49,9 @@
 pub mod expression;
 pub mod lisptype;
 pub mod string;
-pub mod tokenize;
 #[cfg(test)]
 mod tests;
+pub mod tokenize;
 
 use crate::lisptype::LispType;
 
@@ -81,7 +81,7 @@ impl Arrow {
             .map(|e| e.run(&mut vec![LispType::Symbol(n.to_string())]))
             .collect::<Vec<LispType>>()
             .last()
-            .unwrap()
+            .unwrap_or(&LispType::Bool(false))
             .to_string(&mut vec![])])
     }
 }
