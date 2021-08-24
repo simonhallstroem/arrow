@@ -1,16 +1,19 @@
 use crate::expression::Expression;
 use crate::lisptype::LispType;
 
-pub fn tokenize(c: &str) -> Vec<String> {
+pub fn tokenize(c: &str) -> Vec<AstType> {
     let tokens: Vec<String> = c
         .replace("\"", " \" ")
         .split('\"')
         .map(|ms| ms.to_string())
         .collect();
-    let mut staged_tokens: Vec<String> = Vec::new();
+    let mut staged_tokens: Vec<AstType> = Vec::new();
+    let mut last_openbracket: usize = 0;
     for (i, token) in tokens.iter().enumerate() {
         if i % 2 != 0 {
-            staged_tokens.push(token[1..token.len() - 1].to_string());
+            staged_tokens.push(AstType::Type(LispType::String(
+                token[1..token.len() - 1].to_string(),
+            )));
         } else {
             let s_tokens: Vec<String> = token
                 .replace("(", " ( ")
@@ -19,89 +22,79 @@ pub fn tokenize(c: &str) -> Vec<String> {
                 .map(|t| t.to_string())
                 .collect();
             for t in s_tokens {
-                staged_tokens.push(t)
+                staged_tokens.push(match t.as_str() {
+                    "(" => {
+                        last_openbracket = 0;
+                        AstType::OpenBracket
+                    }
+                    ")" => {
+                        last_openbracket += 1;
+                        AstType::ClosedBracket
+                    }
+                    _ => {
+                        last_openbracket += 1;
+                        if last_openbracket == 1 {
+                            AstType::FnName(t)
+                        } else {
+                            AstType::Type(LispType::new(&[t]))
+                        }
+                    }
+                })
             }
         }
     }
     staged_tokens
 }
 
-struct Frame(Vec<String>, usize, bool);
+pub enum AstType {
+    Type(LispType),
+    FnName(String),
+    OpenBracket,
+    ClosedBracket,
+}
 
-impl Frame {
-    pub fn new() -> Self {
-        // the num indicates the number of
-        // LispTypes that have to be popped from
-        // the res to be included in the parent LispType args.
-        Self(vec![], 0, false)
-    }
-
-    pub fn push(&mut self, s: String) {
-        self.0.push(s)
-    }
-
-    pub fn pop(&mut self) -> String {
-        self.0.pop().unwrap()
-    }
-
-    pub fn set_done(&mut self) {
-        self.2 = true;
+impl ToString for AstType {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Type(t) => t.to_string(&mut vec![]),
+            Self::FnName(s) => s.to_string(),
+            Self::OpenBracket => "(".to_string(),
+            Self::ClosedBracket => ")".to_string(),
+        }
     }
 }
 
-pub fn create_ast(tokens: Vec<String>) -> LispType {
-    // Use it in reverse order. Doesen't matter in the end.
-    let mut tokens: Vec<String> = tokens.iter().rev().map(|s| s.to_string()).collect();
+pub fn create_ast(tokens: Vec<AstType>) -> LispType {
+    let mut stack: Vec<AstType> = vec![];
 
-    let mut stack: Vec<Frame> = vec![];
-    let mut res: Vec<LispType> = vec![];
-    loop {
-        if tokens.len() == 0 {
-            break;
-        }
+    for token in tokens {
+        if let AstType::ClosedBracket = token {
+            let mut temp_stack: Vec<AstType> = vec![];
+            loop {
+                let ctoken = stack.pop().unwrap();
 
-        let mut new: Frame = Frame::new();
-        let token = tokens.pop().unwrap();
-        let mut new_args: Vec<Frame> = vec![];
-        match token.as_ref() {
-            "(" => stack.push(Frame::new()),
-            ")" => {
-                new_args = get_args_from_stack(&mut stack);
-                new = stack.pop().unwrap();
+                match ctoken {
+                    AstType::OpenBracket => {
+                        stack.push(AstType::Type(LispType::Expression(Expression::create(
+                            &temp_stack.pop().unwrap().to_string(),
+                            temp_stack
+                                .iter()
+                                .map(|e| match e {
+                                    AstType::Type(t) => t.clone(),
+                                    _ => panic!(""),
+                                })
+                                .collect::<Vec<LispType>>(),
+                        ))))
+                    }
+                    _ => temp_stack.push(stack.pop().unwrap()),
+                }
             }
-            _ => stack.last_mut().unwrap().push(token.to_string()),
-        }
-
-        if new.0.len() != 0 {
-            let name = new.pop();
-            let args = new_args
-                .iter()
-                .map(|e| {
-                    LispType::new(
-                        &e.0.iter()
-                            .rev()
-                            .map(|s| s.to_string())
-                            .collect::<Vec<String>>(),
-                    )
-                })
-                .collect();
-            res.push(LispType::Expression(Expression::create(&name, args)))
-        }
-    }
-
-    res.pop().unwrap()
-}
-
-fn get_args_from_stack(stack: &mut Vec<Frame>) -> Vec<Frame> {
-    let mut res: Vec<Frame> = vec![];
-    loop {
-        if !stack.last().unwrap().2 {
-            res.push(stack.pop().unwrap());
         } else {
-            break;
+            stack.push(token)
         }
     }
-    res
+
+    LispType::Bool(true)
 }
 
 #[cfg(test)]
@@ -109,12 +102,20 @@ mod tests {
     use super::*;
     #[test]
     fn test_tokenize() {
+        use AstType::*;
         let test = "(concat \"H W\" 2)";
-        let exp: Vec<String> = vec!["(", "concat", "H W", "2", ")"]
+        let exp: Vec<AstType> = vec![
+            OpenBracket,
+            FnName("concat".to_string()),
+            Type(LispType::String("H W".to_string())),
+            Type(LispType::Number(2.)),
+            ClosedBracket,
+        ];
+        let res = tokenize(test);
+        let _ = res
             .iter()
-            .map(|t| t.to_string())
-            .collect();
-        assert_eq!(tokenize(test), exp);
+            .zip(exp)
+            .map(|(e, t)| assert_eq!(e.to_string(), t.to_string()));
     }
 
     #[test]
@@ -125,11 +126,11 @@ mod tests {
         assert_eq!(res.run(&mut vec![]).num(&mut vec![]), 14.);
     }
 
-    #[test]
-    fn test_get_args_from_stack() {
-        let mut test = vec![Frame::new(), Frame::new(), Frame::new(), Frame::new()];
-        test[1].set_done();
-        assert_eq!(get_args_from_stack(&mut test).len(), 2);
-        assert_eq!(test.len(), 2)
-    }
+    // #[test]
+    // fn test_get_args_from_stack() {
+    //     let mut test = vec![Frame::new(), Frame::new(), Frame::new(), Frame::new()];
+    //     test[1].set_done();
+    //     assert_eq!(get_args_from_stack(&mut test).len(), 2);
+    //     assert_eq!(test.len(), 2)
+    // }
 }

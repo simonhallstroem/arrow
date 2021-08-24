@@ -31,11 +31,11 @@ pub fn repl() {
         match input {
             "exit" => break,
             "help" => println!("{}", REPL_HELP),
-	    "version" => println!("{}{}", MESSAGE, env!("CARGO_PKG_VERSION")),
+            "version" => println!("{}{}", MESSAGE, env!("CARGO_PKG_VERSION")),
             _ => {
                 if input.len() > 7 {
                     match input.trim_start()[0..6].as_ref() {
-                        "(defun" => lispfns = lispfns.add_function(&input),
+                        "(defun" => {} //lispfns = lispfns.add_function(&input)},
                         _ => println!("{}", lispfns.run(&input).to_string(&mut vec![])),
                     }
                 } else {

@@ -1,5 +1,6 @@
 use crate::expression::Expression;
 
+#[derive(Clone)]
 pub enum LispType {
     Number(f64),
     String(String),
@@ -151,7 +152,7 @@ impl LispType {
                     _ => {}
                 });
                 if flag {
-                    panic!("Didn't find variable with that name.")
+                    res = s.to_string();
                 }
                 res
             }

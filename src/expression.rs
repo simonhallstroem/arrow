@@ -1,8 +1,93 @@
 use crate::lisptype::LispType;
 use crate::string::Append;
 
+#[derive(Clone, Copy)]
+pub enum Func {
+    Defun,
+    Add,
+    Subtract,
+    Multiply,
+    Concat,
+    Equal,
+    Print,
+    Let,
+    Progn,
+}
+
+impl Func {
+    pub fn new(name: &str) -> Result<Self, &'static str> {
+        use Func::*;
+        match name {
+            "defun" => Ok(Defun),
+            "+" => Ok(Add),
+            "-" => Ok(Subtract),
+            "*" => Ok(Multiply),
+            "concat" => Ok(Concat),
+            "equal" => Ok(Equal),
+            "print" => Ok(Print),
+            "let" => Ok(Let),
+            "progn" => Ok(Progn),
+            _ => Err("invalid argument."),
+        }
+    }
+
+    pub fn get_fn(&self) -> Box<dyn Fn(&mut [LispType], &mut Vec<LispType>) -> LispType> {
+        use Func::*;
+        Box::new(match self {
+            Defun => |a: &mut [LispType], v: &mut Vec<LispType>| {
+                if a[0].to_string(&mut vec![]) == v[0].to_string(&mut vec![]) {
+                    LispType::new(&[a
+                        .iter_mut()
+                        .skip(1)
+                        .map(|e| e.run(v))
+                        .collect::<Vec<LispType>>()
+                        .last()
+                        .unwrap()
+                        .to_string(v)])
+                } else {
+                    LispType::Bool(false)
+                }
+            },
+            Add => |a: &mut [LispType], v: &mut Vec<LispType>| {
+                LispType::Number(a[0].run(v).num(v) + a[1].run(v).num(v))
+            },
+            Subtract => |a: &mut [LispType], v: &mut Vec<LispType>| {
+                LispType::Number(a[0].run(v).num(v) - a[1].run(v).num(v))
+            },
+            Multiply => |a: &mut [LispType], v: &mut Vec<LispType>| {
+                LispType::Number(a[0].run(v).num(v) * a[1].run(v).num(v))
+            },
+            Concat => |a: &mut [LispType], v: &mut Vec<LispType>| {
+                LispType::String(a[0].run(v).to_string(v).append(a[1].run(v).to_string(v)))
+            },
+            Equal => |a: &mut [LispType], v: &mut Vec<LispType>| {
+                LispType::Bool(a[0].run(v).to_string(v) == a[1].run(v).to_string(v))
+            },
+            Print => |a: &mut [LispType], v: &mut Vec<LispType>| {
+                println!("{}", a[0].run(v).to_string(v));
+                LispType::Bool(false)
+            },
+            Let => |a: &mut [LispType], v: &mut Vec<LispType>| {
+                v.push(LispType::Atom(
+                    a[0].to_string_from_symbol(),
+                    Box::new(a[1].run(&mut vec![])),
+                ));
+                let res = a[2].run(v);
+                v.pop();
+                res
+            },
+            Progn => |a: &mut [LispType], v: &mut Vec<LispType>| {
+                let mut res = LispType::Bool(false);
+                a.iter_mut().for_each(|e| res = e.run(v));
+                res
+            },
+        })
+    }
+}
+
+#[derive(Clone)]
 pub struct Expression {
-    func: Box<dyn Fn(&mut [LispType], &mut Vec<LispType>) -> LispType>,
+    func: Func,
     args: Vec<LispType>,
 }
 
@@ -15,108 +100,15 @@ impl Expression {
     /// use arrow::expression::Expression;
     /// use arrow::lisptype::LispType;
     ///
-    /// let fun = Box::new(|a: &mut [LispType], _: &mut Vec<LispType>| LispType::String(a[0].to_string(&mut vec![])));
-    /// let data = vec![LispType::String("hw".to_string())];
-    /// let mut expr = Expression::new(fun, data);
+    /// let data = vec![LispType::Number(2.), LispType::Number(3.)];
+    /// let mut expr = Expression::create("+", data);
     ///
-    /// assert_eq!(expr.run(&mut vec![]).to_string(&mut vec![]), "hw".to_string());
+    /// assert_eq!(expr.run(&mut vec![]).num(&mut vec![]), 5.);
     /// ```
-    pub fn new(
-        func: Box<dyn Fn(&mut [LispType], &mut Vec<LispType>) -> LispType>,
-        args: Vec<LispType>,
-    ) -> Self {
+    pub fn create(name: &str, args: Vec<LispType>) -> Self {
         Self {
-            func: Box::new(func),
+            func: Func::new(name).unwrap(),
             args,
-        }
-    }
-
-    /// Create an new instance of the [Expression] struct. The first
-    /// parameter is the name of the function. The next is is a
-    /// [Vec<String>] with all the parameters. The parameters have
-    /// to be already converted into a LispType. That means, that
-    /// can be also be an Expression.
-    ///
-    /// # Examples
-    /// ```
-    /// use arrow::expression::Expression;
-    /// use arrow::lisptype::LispType;
-    ///
-    /// let mut expr = Expression::create("concat", vec![LispType::String("h".to_string()),
-    ///                                                  LispType::String("w".to_string())]);
-    /// assert_eq!(expr.run(&mut vec![]).to_string(&mut vec![]), "hw".to_string());
-    /// ```
-    pub fn create(name: &str, arg: Vec<LispType>) -> Self {
-        match name {
-            "defun" => Self::new(
-                Box::new(|a: &mut [LispType], v: &mut Vec<LispType>| {
-                    if a[0].to_string(&mut vec![]) == v[0].to_string(&mut vec![]) {
-                        LispType::new(&[a
-                            .iter_mut()
-                            .skip(1)
-                            .map(|e| e.run(v))
-                            .collect::<Vec<LispType>>()
-                            .last()
-                            .unwrap()
-                            .to_string(v)])
-                    } else {
-                        LispType::Bool(false)
-                    }
-                }),
-                arg,
-            ),
-            "+" => Self::new(
-                Box::new(|a: &mut [LispType], v: &mut Vec<LispType>| {
-                    LispType::Number(a[0].run(v).num(v) + a[1].run(v).num(v))
-                }),
-                arg,
-            ),
-            "*" => Self::new(
-                Box::new(|a: &mut [LispType], v: &mut Vec<LispType>| {
-                    LispType::Number(a[0].run(v).num(v) * a[1].run(v).num(v))
-                }),
-                arg,
-            ),
-            "concat" => Self::new(
-                Box::new(|a: &mut [LispType], v: &mut Vec<LispType>| {
-                    LispType::String(a[0].run(v).to_string(v).append(a[1].run(v).to_string(v)))
-                }),
-                arg,
-            ),
-            "equal" => Self::new(
-                Box::new(|a: &mut [LispType], v: &mut Vec<LispType>| {
-                    LispType::Bool(a[0].run(v).to_string(v) == a[1].run(v).to_string(v))
-                }),
-                arg,
-            ),
-            "print" => Self::new(
-                Box::new(|a: &mut [LispType], v: &mut Vec<LispType>| {
-                    println!("{}", a[0].run(v).to_string(v));
-                    LispType::Bool(false)
-                }),
-                arg,
-            ),
-            "let" => Self::new(
-                Box::new(|a: &mut [LispType], v: &mut Vec<LispType>| {
-                    v.push(LispType::Atom(
-                        a[0].to_string_from_symbol(),
-                        Box::new(a[1].run(&mut vec![])),
-                    ));
-                    let res = a[2].run(v);
-                    v.pop();
-                    res
-                }),
-                arg,
-            ),
-            "progn" => Self::new(
-                Box::new(|a: &mut [LispType], v: &mut Vec<LispType>| {
-                    let mut res = LispType::Bool(false);
-                    a.iter_mut().for_each(|e| res = e.run(v));
-                    res
-                }),
-                arg,
-            ),
-            _ => panic!("invalid fn name!"),
         }
     }
 
@@ -137,6 +129,6 @@ impl Expression {
     /// assert_eq!(res, 3.);
     /// ```
     pub fn run(&mut self, args: &mut Vec<LispType>) -> LispType {
-        (*self.func)(&mut self.args, args)
+        (*self.func.get_fn())(&mut self.args, args)
     }
 }

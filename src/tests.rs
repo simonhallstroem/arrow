@@ -6,7 +6,11 @@ fn test_create_defun() {
     let fn_name = "defun";
     let args = vec![LispType::String("nt".to_string()), LispType::Number(22.)];
     let mut expr = Expression::create(fn_name, args);
-    assert_eq!(expr.run(&mut vec![]).num(&mut vec![]), 22.);
+    assert_eq!(
+        expr.run(&mut vec![LispType::Symbol("nt".to_string())])
+            .num(&mut vec![]),
+        22.
+    );
 }
 
 #[test]
