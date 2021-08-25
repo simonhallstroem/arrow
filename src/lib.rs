@@ -18,11 +18,11 @@
 //! use arrow::Arrow;
 //!
 //! let mut arrow = Arrow::default()
-//!     .add_function("(defun calc (+ 2 (* 2 3))")
-//!     .add_function("(defun subtract (- 2 3))");
+//!     .add_function("(defun calc (+ 2 (* 2 3))")?
+//!     .add_function("(defun subtract (- 2 3))")?;
 //!
-//! assert_eq!(arrow.run("calc").num(&mut vec![]), 8.);
-//! assert_eq!(arrow.run("subtract").num(&mut vec![]), -1.);
+//! assert_eq!(arrow.run("calc")?.num(&mut vec![])?, 8.);
+//! assert_eq!(arrow.run("subtract")?.num(&mut vec![])?, -1.);
 //! ```
 //!
 //! # Caveats
@@ -36,9 +36,9 @@
 //! ```
 //! use arrow::lisptype::LispType;
 //!
-//! let mut lisptype = LispType::new(&["12.".to_string()]);
+//! let mut lisptype = LispType::new(&["12.".to_string()])?;
 //!
-//! assert_eq!(lisptype.num(&mut vec![]), 12.);
+//! assert_eq!(lisptype.num(&mut vec![])?, 12.);
 //! ```
 //!
 //! In this example, you can see, that you have to pass an empty vector
@@ -67,21 +67,22 @@ impl Default for Arrow {
 }
 
 impl Arrow {
-    pub fn add_function(mut self, f: &str) -> Self {
-        let tokens = crate::tokenize::tokenize(f);
-        let ast = crate::tokenize::create_ast(tokens);
+    pub fn add_function(mut self, f: &str) -> Result<Self, &'static str> {
+        let tokens = crate::tokenize::tokenize(f)?;
+        let ast = crate::tokenize::create_ast(tokens)?;
         self.funcs.push(ast);
-        self
+        Ok(self)
     }
 
-    pub fn run(&mut self, n: &str) -> LispType {
+    pub fn run(&mut self, n: &str) -> Result<LispType, &'static str> {
         LispType::new(&[self
             .funcs
             .iter_mut()
-            .map(|e| e.run(&mut vec![LispType::Symbol(n.to_string())]))
+            .map(|e| e.run(&mut vec![LispType::Symbol(n.to_string())]).unwrap())
             .collect::<Vec<LispType>>()
             .last()
             .unwrap_or(&LispType::Bool(false))
-            .to_string(&mut vec![])])
+            .to_string(&mut vec![])
+            .unwrap()])
     }
 }

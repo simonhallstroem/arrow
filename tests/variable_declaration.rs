@@ -2,7 +2,7 @@ use arrow::expression::Expression;
 use arrow::lisptype::LispType;
 
 #[test]
-fn test_variables() {
+fn test_variables() -> Result<(), &'static str> {
     // The lisp syntax would look the following:
     // (let t 2
     //     (+ t 2))
@@ -14,13 +14,14 @@ fn test_variables() {
             LispType::Expression(Expression::create(
                 "+",
                 vec![LispType::Symbol("t".to_string()), LispType::Number(2.)],
-            )),
+            )?),
         ],
-    ));
+    )?);
 
-    let res = test.run(&mut vec![]);
+    let res = test.run(&mut vec![])?;
 
-    assert_eq!(res.num(&mut vec![]), 4.)
+    assert_eq!(res.num(&mut vec![])?, 4.);
+    Ok(())
 }
 
 #[test]
@@ -30,26 +31,35 @@ fn test_invalid_scope() {
     // (let t 2
     //     (+ t 2))
     // (+ t 3)
-    let mut test = LispType::Expression(Expression::create(
-        "progn",
-        vec![
-            LispType::Expression(Expression::create(
-                "let",
-                vec![
-                    LispType::Symbol("t".to_string()),
-                    LispType::Number(2.),
-                    LispType::Expression(Expression::create(
+    let mut test = LispType::Expression(
+        Expression::create(
+            "progn",
+            vec![
+                LispType::Expression(Expression::create(
+                    "let",
+                    vec![
+                        LispType::Symbol("t".to_string()),
+                        LispType::Number(2.),
+                        LispType::Expression(
+                            Expression::create(
+                                "+",
+                                vec![LispType::Symbol("t".to_string()), LispType::Number(2.)],
+                            )
+                            .unwrap(),
+                        ),
+                    ],
+                ).unwrap()),
+                LispType::Expression(
+                    Expression::create(
                         "+",
                         vec![LispType::Symbol("t".to_string()), LispType::Number(2.)],
-                    )),
-                ],
-            )),
-            LispType::Expression(Expression::create(
-                "+",
-                vec![LispType::Symbol("t".to_string()), LispType::Number(2.)],
-            )),
-        ],
-    ));
+                    )
+                    .unwrap(),
+                ),
+            ],
+        )
+        .unwrap(),
+    );
 
-    test.run(&mut vec![]);
+    test.run(&mut vec![]).unwrap();
 }

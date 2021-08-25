@@ -36,10 +36,16 @@ pub fn repl() {
                 if input.len() > 7 {
                     match input.trim_start()[0..6].as_ref() {
                         "(defun" => {} //lispfns = lispfns.add_function(&input)},
-                        _ => println!("{}", lispfns.run(&input).to_string(&mut vec![])),
+                        _ => println!(
+                            "{}",
+                            lispfns.run(&input).unwrap().to_string(&mut vec![]).unwrap()
+                        ),
                     }
                 } else {
-                    println!("{}", lispfns.run(&input).to_string(&mut vec![]))
+                    println!(
+                        "{}",
+                        lispfns.run(&input).unwrap().to_string(&mut vec![]).unwrap()
+                    )
                 }
             }
         }
