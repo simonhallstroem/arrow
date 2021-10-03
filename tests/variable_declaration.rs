@@ -35,20 +35,23 @@ fn test_invalid_scope() {
         Expression::create(
             "progn",
             vec![
-                LispType::Expression(Expression::create(
-                    "let",
-                    vec![
-                        LispType::Symbol("t".to_string()),
-                        LispType::Number(2.),
-                        LispType::Expression(
-                            Expression::create(
-                                "+",
-                                vec![LispType::Symbol("t".to_string()), LispType::Number(2.)],
-                            )
-                            .unwrap(),
-                        ),
-                    ],
-                ).unwrap()),
+                LispType::Expression(
+                    Expression::create(
+                        "let",
+                        vec![
+                            LispType::Symbol("t".to_string()),
+                            LispType::Number(2.),
+                            LispType::Expression(
+                                Expression::create(
+                                    "+",
+                                    vec![LispType::Symbol("t".to_string()), LispType::Number(2.)],
+                                )
+                                .unwrap(),
+                            ),
+                        ],
+                    )
+                    .unwrap(),
+                ),
                 LispType::Expression(
                     Expression::create(
                         "+",

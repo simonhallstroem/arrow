@@ -81,14 +81,12 @@ impl LispType {
                 let mut res = 0.;
                 let mut flag = true;
                 vars.iter().for_each(|n| match n {
-                    Self::Atom(a, b) => {
-                        if a == s {
-                            flag = false;
-                            match **b {
-                                Self::Number(n) => res = n,
-                                _ => panic!("This shouldn't happen."),
-                            };
-                        }
+                    Self::Atom(a, b) if a == s => {
+                        flag = false;
+                        match **b {
+                            Self::Number(n) => res = n,
+                            _ => panic!("This shouldn't happen."),
+                        };
                     }
                     _ => {}
                 });

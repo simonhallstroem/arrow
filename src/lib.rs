@@ -67,12 +67,12 @@ impl Default for Arrow {
 }
 
 impl Arrow {
-    pub fn add_function(mut self, f: &str) -> Result<Self, &'static str> {
-        let tokens = crate::tokenize::tokenize(f)?;
-        let ast = crate::tokenize::create_ast(tokens)?;
-        self.funcs.push(ast);
-        Ok(self)
-    }
+    // pub fn add_function(mut self, f: &str) -> Result<Self, &'static str> {
+    //     let tokens = crate::tokenize::tokenize(f)?;
+    //     let ast = crate::tokenize::create_ast(tokens)?;
+    //     self.funcs.push(ast);
+    //     Ok(self)
+    // }
 
     pub fn run(&mut self, n: &str) -> Result<LispType, &'static str> {
         LispType::new(&[self

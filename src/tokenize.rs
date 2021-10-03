@@ -1,160 +1,107 @@
 use crate::expression::Expression;
 use crate::lisptype::LispType;
 
-pub fn tokenize(c: &str) -> Result<Vec<AstType>, &'static str> {
-    let tokens: Vec<String> = c
-        .replace("\"", " \" ")
-        .split('\"')
-        .map(|ms| ms.to_string())
-        .collect();
-    let mut staged_tokens: Vec<AstType> = Vec::new();
-    let mut last_openbracket: usize = 0;
-    for (i, token) in tokens.iter().enumerate() {
-        if i % 2 != 0 {
-            staged_tokens.push(AstType::Type(LispType::String(
-                token[1..token.len() - 1].to_string(),
-            )));
-        } else {
-            let s_tokens: Vec<String> = token
-                .replace("(", " ( ")
-                .replace(")", " ) ")
-                .split_whitespace()
-                .map(|t| t.to_string())
-                .collect();
-            for t in s_tokens {
-                staged_tokens.push(match t.as_str() {
-                    "(" => {
-                        last_openbracket = 0;
-                        AstType::OpenBracket
-                    }
-                    ")" => {
-                        last_openbracket += 1;
-                        AstType::ClosedBracket
-                    }
-                    _ => {
-                        last_openbracket += 1;
-                        if last_openbracket == 1 {
-                            AstType::FnName(t)
-                        } else {
-                            AstType::Type(LispType::new(&[t])?)
-                        }
-                    }
-                })
-            }
-        }
+#[derive(Debug, PartialEq, Clone)]
+pub enum Tree {
+    Branch(Vec<Self>),
+    Leaf(String),
+}
+
+impl Tree {
+    pub fn new_branch(children: Vec<Self>) -> Self {
+        Self::Branch(children)
     }
-    Ok(staged_tokens)
-}
 
-#[derive(Debug)]
-pub enum AstType {
-    Type(LispType),
-    FnName(String),
-    OpenBracket,
-    ClosedBracket,
-}
-
-impl ToString for AstType {
-    fn to_string(&self) -> String {
-        match self {
-            Self::Type(t) => t.to_string(&mut vec![]).unwrap(),
-            Self::FnName(s) => s.to_string(),
-            Self::OpenBracket => "(".to_string(),
-            Self::ClosedBracket => ")".to_string(),
-        }
+    pub fn new_leaf(content: &str) -> Self {
+        Self::Leaf(content.to_string())
     }
 }
 
-pub fn create_ast(tokens: Vec<AstType>) -> Result<LispType, &'static str> {
-    let mut stack: Vec<AstType> = vec![];
+/// Create an ast from a string. After creating the ast, it can be
+/// passed into the create_code function to make it executable.
+///
+/// # Examples
+///
+/// ```
+/// use arrow::tokenize::{ast, Tree};
+///
+/// let code = "(+ 4 5)";
+/// let exp = Tree::new_branch(vec![
+///     Tree::new_leaf("+"),
+///     Tree::new_leaf("4"),
+///     Tree::new_leaf("5"),
+/// ]);
+///
+/// assert_eq!(ast(code)[0], exp);
+/// ```
+pub fn ast(code: &str) -> Vec<Tree> {
+    let code = code.replace("(", " ( ").replace(")", " ) ");
+    let mut res: Vec<Tree> = vec![];
+    let mut leaf_stack: Vec<Tree> = vec![];
+    let mut working_token: String = String::new();
 
-    for token in tokens {
-        if let AstType::ClosedBracket = token {
-            let mut temp_stack: Vec<AstType> = vec![];
-            loop {
-                let ctoken = if let Some(s) = stack.pop() {
-                    s
-                } else {
-                    break;
-                };
-
-                let res: Vec<LispType> = vec![];
-
-                match ctoken {
-                    AstType::ClosedBracket => {
-                        stack.push(AstType::Type(LispType::Expression(Expression::create(
-                            &match temp_stack.pop().unwrap() {
-                                AstType::FnName(f) => f.to_string(),
-                                _ => return Err("Invalid Syntax."),
-                            },
-                            {
-                                loop {
-                                    match temp_stack.pop().unwrap() {
-                                        AstType::OpenBracket => break,
-                                        AstType::Type(t) => t.clone(),
-                                        _ => return Err("Invalid Syntax."),
-                                    };
-                                }
-                                res
-                            },
-                        )?)))
-                    }
-                    _ => temp_stack.push(ctoken),
+    for c in code.chars() {
+        match c {
+            '(' => {}
+            ' ' => {
+                if working_token.trim() != "" {
+                    leaf_stack.push(Tree::new_leaf(&working_token));
+                    working_token = String::new();
                 }
-
-                println!("{:?}", temp_stack);
             }
-        } else {
-            stack.push(token)
+            ')' => {
+                res.push(Tree::new_branch(leaf_stack.clone()));
+                leaf_stack = vec![];
+            }
+            _ => working_token.push(c),
         }
-        println!("Stack: {:?}", stack);
     }
 
-    match stack.pop() {
-        Some(s) => match s {
-            AstType::Type(t) => Ok(t),
-            _ => Err("Found non valid data on stack."),
-        },
-        None => Err("No data found on stack."),
-    }
+    res
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
-    fn test_tokenize() -> Result<(), &'static str> {
-        use AstType::*;
-        let test = "(concat \"H W\" 2)";
-        let exp: Vec<AstType> = vec![
-            OpenBracket,
-            FnName("concat".to_string()),
-            Type(LispType::String("H W".to_string())),
-            Type(LispType::Number(2.)),
-            ClosedBracket,
-        ];
-        let res = tokenize(test)?;
-        let _ = res
-            .iter()
-            .zip(exp)
-            .map(|(e, t)| assert_eq!(e.to_string(), t.to_string()));
-        Ok(())
+    fn test_create_ast_simple() {
+        let test = "(mod 5 2)";
+        let test_ast = vec![Tree::new_branch(vec![
+            Tree::new_leaf("mod"),
+            Tree::new_leaf("5"),
+            Tree::new_leaf("2"),
+        ])];
+        assert_eq!(ast(test), test_ast)
     }
 
     #[test]
-    fn test_create_ast() -> Result<(), &'static str> {
-        let test = "(* (+ 3 4) 2)";
-        let tokens = tokenize(test)?;
-        let mut res = create_ast(tokens)?;
-        assert_eq!(res.run(&mut vec![])?.num(&mut vec![])?, 14.);
-        Ok(())
+    fn test_create_ast_complex() {
+        let test = "(mod 5 (add 4 5))";
+        let test_ast = vec![Tree::new_branch(vec![
+            Tree::new_leaf("mod"),
+            Tree::new_leaf("5"),
+            Tree::new_branch(vec![
+                Tree::new_leaf("add"),
+                Tree::new_leaf("4"),
+                Tree::new_leaf("5"),
+            ]),
+        ])];
+        assert_eq!(ast(test), test_ast)
     }
 
-    // #[test]
-    // fn test_get_args_from_stack() {
-    //     let mut test = vec![Frame::new(), Frame::new(), Frame::new(), Frame::new()];
-    //     test[1].set_done();
-    //     assert_eq!(get_args_from_stack(&mut test).len(), 2);
-    //     assert_eq!(test.len(), 2)
-    // }
+    #[test]
+    fn test_create_ast_complex_2() {
+        let test = "(mod (add 4 5)) 5";
+        let test_ast = vec![Tree::new_branch(vec![
+            Tree::new_leaf("mod"),
+            Tree::new_branch(vec![
+                Tree::new_leaf("add"),
+                Tree::new_leaf("4"),
+                Tree::new_leaf("5"),
+            ]),
+            Tree::new_leaf("5"),
+        ])];
+        assert_eq!(ast(test), test_ast)
+    }
 }
