@@ -1,4 +1,4 @@
-use arrow::lisptype::LispType;
+use arrow::tokenize::{ast, create_lisptypes};
 use arrow::Arrow;
 
 const MESSAGE: &str = "Arrow: A LISP dialect.
@@ -41,6 +41,17 @@ pub fn repl() {
                             lispfns.run(&input).unwrap().to_string(&mut vec![]).unwrap()
                         ),
                     }
+                } else if input.chars().nth(0).unwrap() == '(' {
+                    let ast = ast(input);
+                    let lisptype = &mut create_lisptypes(ast).unwrap()[0];
+                    println!(
+                        "{}",
+                        lisptype
+                            .run(&mut vec![])
+                            .unwrap()
+                            .to_string(&mut vec![])
+                            .unwrap()
+                    );
                 } else {
                     println!(
                         "{}",

@@ -1,19 +1,25 @@
-use crate::expression::Expression;
+use crate::expression::{Expression, Func};
 use crate::lisptype::LispType;
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum Tree {
-    Branch(Vec<Self>),
-    Leaf(String),
+#[derive(Default, PartialEq, Debug, Clone)]
+pub struct TokenContainer {
+    pub name: String,
+    pub children: Vec<ChildrenType>,
 }
 
-impl Tree {
-    pub fn new_branch(children: Vec<Self>) -> Self {
-        Self::Branch(children)
+#[derive(PartialEq, Debug, Clone)]
+pub enum ChildrenType {
+    Container(TokenContainer),
+    Else(String),
+}
+
+impl TokenContainer {
+    pub fn set_name(&mut self, name: &str) {
+        self.name = name.to_string();
     }
 
-    pub fn new_leaf(content: &str) -> Self {
-        Self::Leaf(content.to_string())
+    pub fn add_child(&mut self, child: Self) {
+        self.children.push(ChildrenType::Container(child));
     }
 }
 
@@ -23,41 +29,79 @@ impl Tree {
 /// # Examples
 ///
 /// ```
-/// use arrow::tokenize::{ast, Tree};
+/// use arrow::tokenize::{ast, TokenContainer, ChildrenType};
 ///
 /// let code = "(+ 4 5)";
-/// let exp = Tree::new_branch(vec![
-///     Tree::new_leaf("+"),
-///     Tree::new_leaf("4"),
-///     Tree::new_leaf("5"),
-/// ]);
+/// let exp = TokenContainer {
+///     name: "+".to_string(),
+///     children: vec![
+///         ChildrenType::Else("4".to_string()),
+///         ChildrenType::Else("5".to_string()),
+///     ]
+/// };
 ///
 /// assert_eq!(ast(code)[0], exp);
 /// ```
-pub fn ast(code: &str) -> Vec<Tree> {
-    let code = code.replace("(", " ( ").replace(")", " ) ");
-    let mut res: Vec<Tree> = vec![];
-    let mut leaf_stack: Vec<Tree> = vec![];
-    let mut working_token: String = String::new();
+pub fn ast(code: &str) -> Vec<TokenContainer> {
+    let mut lasttokenbracket = false;
+    let mut working_stack: Vec<TokenContainer> = vec![];
 
-    for c in code.chars() {
-        match c {
-            '(' => {}
-            ' ' => {
-                if working_token.trim() != "" {
-                    leaf_stack.push(Tree::new_leaf(&working_token));
-                    working_token = String::new();
-                }
+    for token in code
+        .replace("(", " ( ")
+        .replace(")", " ) ")
+        .split_whitespace()
+    {
+        if token == "(" {
+            working_stack.push(TokenContainer::default());
+
+            lasttokenbracket = true;
+            continue;
+        } else if token == ")" {
+            let container_done = working_stack.pop().unwrap();
+            if let Some(working) = working_stack.last_mut() {
+                working.add_child(container_done);
+            } else {
+                working_stack.push(container_done);
             }
-            ')' => {
-                res.push(Tree::new_branch(leaf_stack.clone()));
-                leaf_stack = vec![];
-            }
-            _ => working_token.push(c),
+        } else if lasttokenbracket {
+            let working = working_stack.last_mut().unwrap();
+            working.set_name(token);
+
+            lasttokenbracket = false;
+        } else {
+            let working = working_stack.last_mut().unwrap();
+            working.children.push(ChildrenType::Else(token.to_string()));
         }
     }
 
-    res
+    working_stack
+}
+
+pub fn create_lisptypes(input: Vec<TokenContainer>) -> Result<Vec<LispType>, &'static str> {
+    let mut res: Vec<LispType> = vec![];
+    for container in input {
+        let mut args: Vec<LispType> = vec![];
+
+        for child in container.children {
+            match child {
+                ChildrenType::Container(c) => {
+                    let lts = create_lisptypes(vec![c])?;
+
+                    for lt in lts {
+                        args.push(lt);
+                    }
+                }
+                ChildrenType::Else(e) => args.push(LispType::new(&[e])?),
+            }
+        }
+
+        res.push(LispType::Expression(Expression {
+            func: Func::new(container.name.as_str())?,
+            args,
+        }));
+    }
+
+    Ok(res)
 }
 
 #[cfg(test)]
@@ -65,43 +109,60 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_create_lisptype() {
+        let test = "(+ 2 3)";
+        assert_eq!(
+            create_lisptypes(ast(test)).unwrap()[0]
+                .run(&mut vec![])
+                .unwrap()
+                .num(&mut vec![])
+                .unwrap(),
+            5.
+        );
+    }
+
+    #[test]
+    fn test_create_lisptype_complex() {
+        let test = "(+ (* 4 5) (* 3 (* 6 2)))";
+        assert_eq!(
+            create_lisptypes(ast(test)).unwrap()[0]
+                .run(&mut vec![])
+                .unwrap()
+                .num(&mut vec![])
+                .unwrap(),
+            56.
+        );
+    }
+
+    #[test]
     fn test_create_ast_simple() {
         let test = "(mod 5 2)";
-        let test_ast = vec![Tree::new_branch(vec![
-            Tree::new_leaf("mod"),
-            Tree::new_leaf("5"),
-            Tree::new_leaf("2"),
-        ])];
-        assert_eq!(ast(test), test_ast)
+        let test_ast = TokenContainer {
+            name: "mod".to_string(),
+            children: vec![
+                ChildrenType::Else("5".to_string()),
+                ChildrenType::Else("2".to_string()),
+            ],
+        };
+        assert_eq!(ast(test)[0], test_ast);
     }
 
     #[test]
     fn test_create_ast_complex() {
         let test = "(mod 5 (add 4 5))";
-        let test_ast = vec![Tree::new_branch(vec![
-            Tree::new_leaf("mod"),
-            Tree::new_leaf("5"),
-            Tree::new_branch(vec![
-                Tree::new_leaf("add"),
-                Tree::new_leaf("4"),
-                Tree::new_leaf("5"),
-            ]),
-        ])];
-        assert_eq!(ast(test), test_ast)
-    }
-
-    #[test]
-    fn test_create_ast_complex_2() {
-        let test = "(mod (add 4 5)) 5";
-        let test_ast = vec![Tree::new_branch(vec![
-            Tree::new_leaf("mod"),
-            Tree::new_branch(vec![
-                Tree::new_leaf("add"),
-                Tree::new_leaf("4"),
-                Tree::new_leaf("5"),
-            ]),
-            Tree::new_leaf("5"),
-        ])];
-        assert_eq!(ast(test), test_ast)
+        let test_ast = TokenContainer {
+            name: "mod".to_string(),
+            children: vec![
+                ChildrenType::Else("5".to_string()),
+                ChildrenType::Container(TokenContainer {
+                    name: "add".to_string(),
+                    children: vec![
+                        ChildrenType::Else("4".to_string()),
+                        ChildrenType::Else("5".to_string()),
+                    ],
+                }),
+            ],
+        };
+        assert_eq!(ast(test)[0], test_ast)
     }
 }

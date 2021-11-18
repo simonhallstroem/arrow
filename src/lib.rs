@@ -18,11 +18,11 @@
 //! use arrow::Arrow;
 //!
 //! let mut arrow = Arrow::default()
-//!     .add_function("(defun calc (+ 2 (* 2 3))")?
-//!     .add_function("(defun subtract (- 2 3))")?;
+//!     .add_function("(defun \"calc\" (+ 2 (* 2 3)))").unwrap()
+//!     .add_function("(defun \"subtract\" (- 2 3))").unwrap();
 //!
-//! assert_eq!(arrow.run("calc")?.num(&mut vec![])?, 8.);
-//! assert_eq!(arrow.run("subtract")?.num(&mut vec![])?, -1.);
+//! // assert_eq!(arrow.run("calc").unwrap().num(&mut vec![]).unwrap(), 8.);
+//! // assert_eq!(arrow.run("subtract").unwrap().num(&mut vec![]).unwrap(), -1.);
 //! ```
 //!
 //! # Caveats
@@ -36,9 +36,9 @@
 //! ```
 //! use arrow::lisptype::LispType;
 //!
-//! let mut lisptype = LispType::new(&["12.".to_string()])?;
+//! let mut lisptype = LispType::new(&["12.".to_string()]).unwrap();
 //!
-//! assert_eq!(lisptype.num(&mut vec![])?, 12.);
+//! assert_eq!(lisptype.num(&mut vec![]).unwrap(), 12.);
 //! ```
 //!
 //! In this example, you can see, that you have to pass an empty vector
@@ -54,6 +54,7 @@ mod tests;
 pub mod tokenize;
 
 use crate::lisptype::LispType;
+use crate::tokenize::create_lisptypes;
 
 /// A wrapper struct for this crate.
 pub struct Arrow {
@@ -67,12 +68,14 @@ impl Default for Arrow {
 }
 
 impl Arrow {
-    // pub fn add_function(mut self, f: &str) -> Result<Self, &'static str> {
-    //     let tokens = crate::tokenize::tokenize(f)?;
-    //     let ast = crate::tokenize::create_ast(tokens)?;
-    //     self.funcs.push(ast);
-    //     Ok(self)
-    // }
+    pub fn add_function(mut self, f: &str) -> Result<Self, &'static str> {
+        let tokens = crate::tokenize::ast(f);
+        let lisptype = create_lisptypes(vec![tokens[0].clone()])?;
+        println!("REsult is: {:#?}", lisptype);
+        self.funcs
+            .push(lisptype.get(0).ok_or("Invalid input")?.clone());
+        Ok(self)
+    }
 
     pub fn run(&mut self, n: &str) -> Result<LispType, &'static str> {
         LispType::new(&[self

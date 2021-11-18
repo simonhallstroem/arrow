@@ -1,3 +1,5 @@
+use std::panic;
+
 use crate::expression::Expression;
 
 #[derive(Clone, Debug)]
@@ -48,8 +50,8 @@ impl LispType {
     /// use arrow::expression::Expression;
     ///
     /// let mut lt = LispType::Expression(Expression::create("*", vec![LispType::Number(2.),
-    ///                                                            LispType::Number(2.)]));
-    /// assert_eq!(lt.run(&mut vec![])?.num(&mut vec![])?, 4.);
+    ///                                                            LispType::Number(2.)]).unwrap());
+    /// assert_eq!(lt.run(&mut vec![]).unwrap().num(&mut vec![]).unwrap(), 4.);
     /// ```    
     pub fn run(&mut self, args: &mut Vec<LispType>) -> Result<Self, &'static str> {
         match self {
@@ -72,7 +74,7 @@ impl LispType {
     ///
     /// let lt = LispType::Number(1.);
     ///
-    /// assert_eq!(lt.num(&mut vec![])?, 1.);
+    /// assert_eq!(lt.num(&mut vec![]).unwrap(), 1.);
     /// ```
     pub fn num(&self, vars: &mut Vec<Self>) -> Result<f64, &'static str> {
         match self {
@@ -110,8 +112,8 @@ impl LispType {
     /// let lt = LispType::Number(1.);
     /// let lt_2 = LispType::String("nil".to_string());
     ///
-    /// assert_eq!(lt.bool()?, true);
-    /// assert_eq!(lt_2.bool()?, false);
+    /// assert_eq!(lt.bool().unwrap(), true);
+    /// assert_eq!(lt_2.bool().unwrap(), false);
     /// ```
     pub fn bool(&self) -> Result<bool, &'static str> {
         match self {

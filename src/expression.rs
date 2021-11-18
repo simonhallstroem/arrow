@@ -102,8 +102,8 @@ impl Func {
 
 #[derive(Clone, Debug)]
 pub struct Expression {
-    func: Func,
-    args: Vec<LispType>,
+    pub func: Func,
+    pub args: Vec<LispType>,
 }
 
 impl Expression {
@@ -116,9 +116,9 @@ impl Expression {
     /// use arrow::lisptype::LispType;
     ///
     /// let data = vec![LispType::Number(2.), LispType::Number(3.)];
-    /// let mut expr = Expression::create("+", data);
+    /// let mut expr = Expression::create("+", data).unwrap();
     ///
-    /// assert_eq!(expr.run(&mut vec![])?.num(&mut vec![])?, 5.);
+    /// assert_eq!(expr.run(&mut vec![]).unwrap().num(&mut vec![]).unwrap(), 5.);
     /// ```
     pub fn create(name: &str, args: Vec<LispType>) -> Result<Self, &'static str> {
         Ok(Self {
@@ -135,9 +135,15 @@ impl Expression {
     /// use arrow::expression::Expression;
     /// use arrow::lisptype::LispType;
     ///
-    /// let mut expr = Expression::create("+", vec![LispType::new(&["1".to_string()]),
-    ///                                             LispType::new(&["2".to_string()])]);
-    /// let res = match expr.run(&mut vec![])? {
+    /// let mut expr = Expression::create(
+    ///         "+",
+    ///         vec![
+    ///             LispType::new(&["1".to_string()]).unwrap(),
+    ///             LispType::new(&["2".to_string()]).unwrap()
+    ///         ]
+    /// ).unwrap();
+    ///
+    /// let res = match expr.run(&mut vec![]).unwrap() {
     ///     LispType::Number(n) => n,
     ///     _ => panic!(""),
     /// };
