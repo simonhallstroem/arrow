@@ -1,14 +1,13 @@
 #+HTML: <div align="center">
-* Project Orion: Container
+* Arrow
 #+HTML: <img alt="GitHub" src="https://img.shields.io/github/license/EngineOrion/container">
 #+HTML: </div>
 
 #+end_center
 * Intruction
-Container is an essential part of the =Engine: Orion= project. It is
-responsible of processing traffic. For control by the programmer, it
-has to be programed in it's lisp-like programming language
-NET-Script. This approach should allow the programmer to spend less
+Arrow is an essential part of the =Engine: Orion= project. It is
+responsible of processing traffic. The syntax of arrow is very similar
+to lisp. This approach should allow the programmer to spend less
 time configuring and programing the back-end.
 
 But it can also be used as a stand alone interpreter in a shell like environment.
@@ -21,7 +20,7 @@ If you wan't to run the tests, just type this command and all tests
 will be run.
 
 #+begin_src sh
-$ cargo test --no-fail-fast
+$ cargo test 
 #+end_src
 
 The complete build process can be done with this command:
@@ -35,21 +34,27 @@ $ cargo build --release
 Now, you can execute the program with the following command:
 
 #+begin_src sh
-$ ./target/release/container repl
+$ ./target/release/arrow
 > 
 #+end_src
 
 * Run it
 Now that the repl is compiled, the repl can be used to create evaluate
 code. If the input isn't a function, it will execute immediately. If
-it's a function, it must be called.
+it's a function, it must be called. The function can be called through
+its symbol.
 
 #+begin_src sh
+$ ./target/release/arrow
+Arrow: A LISP dialect.
+Version: 0.1.0
 > (* 5 5)
 25
 > (defun 'ret [] (return 5))
+> 'ret
 5
 > (defun 'greet [] (print "hello"))
+> 'greet
 "hello"
 nil
 #+end_src
