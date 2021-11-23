@@ -35,7 +35,9 @@ pub fn repl() {
             _ => {
                 if input.len() > 7 {
                     match input.trim_start()[0..6].as_ref() {
-                        "(defun" => {} //lispfns = lispfns.add_function(&input)},
+                        "(defun" => {
+                            lispfns = lispfns.add_function(&input).unwrap();
+                        }
                         _ => println!(
                             "{}",
                             lispfns.run(&input).unwrap().to_string(&mut vec![]).unwrap()

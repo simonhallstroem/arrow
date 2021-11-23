@@ -18,11 +18,9 @@
 //! use arrow::Arrow;
 //!
 //! let mut arrow = Arrow::default()
-//!     .add_function("(defun \"calc\" (+ 2 (* 2 3)))").unwrap()
-//!     .add_function("(defun \"subtract\" (- 2 3))").unwrap();
+//!     .add_function("(defun 'calc (+ 2 (* 2 3)))").unwrap();
 //!
-//! // assert_eq!(arrow.run("calc").unwrap().num(&mut vec![]).unwrap(), 8.);
-//! // assert_eq!(arrow.run("subtract").unwrap().num(&mut vec![]).unwrap(), -1.);
+//! assert_eq!(arrow.run("'calc").unwrap().num(&mut vec![]).unwrap(), 8.);
 //! ```
 //!
 //! # Caveats
@@ -36,7 +34,7 @@
 //! ```
 //! use arrow::lisptype::LispType;
 //!
-//! let mut lisptype = LispType::new(&["12.".to_string()]).unwrap();
+//! let mut lisptype = LispType::new(&["12.".to_string()], false).unwrap();
 //!
 //! assert_eq!(lisptype.num(&mut vec![]).unwrap(), 12.);
 //! ```
@@ -46,6 +44,7 @@
 //! is a `Symbol` and it has to look up, if there is a corresponding
 //! variable, the value has to be used.
 
+pub mod actaeon;
 pub mod expression;
 pub mod lisptype;
 pub mod string;
@@ -57,6 +56,7 @@ use crate::lisptype::LispType;
 use crate::tokenize::create_lisptypes;
 
 /// A wrapper struct for this crate.
+#[derive(Debug)]
 pub struct Arrow {
     funcs: Vec<LispType>,
 }
@@ -68,24 +68,30 @@ impl Default for Arrow {
 }
 
 impl Arrow {
+    /// Add a function to the Crate wrapper struct.
     pub fn add_function(mut self, f: &str) -> Result<Self, &'static str> {
         let tokens = crate::tokenize::ast(f);
         let lisptype = create_lisptypes(vec![tokens[0].clone()])?;
-        println!("REsult is: {:#?}", lisptype);
         self.funcs
             .push(lisptype.get(0).ok_or("Invalid input")?.clone());
         Ok(self)
     }
 
+    /// Execute a function, that is registered in the Arrow struct.
     pub fn run(&mut self, n: &str) -> Result<LispType, &'static str> {
-        LispType::new(&[self
-            .funcs
-            .iter_mut()
-            .map(|e| e.run(&mut vec![LispType::Symbol(n.to_string())]).unwrap())
-            .collect::<Vec<LispType>>()
-            .last()
-            .unwrap_or(&LispType::Bool(false))
-            .to_string(&mut vec![])
-            .unwrap()])
+        LispType::new(
+            &[self
+                .funcs
+                .iter_mut()
+                .map(|e| {
+                    e.run(&mut vec![LispType::new(&[n.to_string()], false).unwrap()])
+                        .unwrap()
+                })
+                .collect::<Vec<LispType>>()
+                .last()
+                .unwrap()
+                .to_string(&mut vec![])?],
+            false,
+        )
     }
 }

@@ -63,6 +63,8 @@ pub fn ast(code: &str) -> Vec<TokenContainer> {
             } else {
                 working_stack.push(container_done);
             }
+        } else if token == "[" || token == "]" {
+            continue;
         } else if lasttokenbracket {
             let working = working_stack.last_mut().unwrap();
             working.set_name(token);
@@ -77,6 +79,8 @@ pub fn ast(code: &str) -> Vec<TokenContainer> {
     working_stack
 }
 
+/// Takes the ast and generates the LispTypes and bundles them into single LispTypes.
+/// One Arrow Function will result in one LispType.
 pub fn create_lisptypes(input: Vec<TokenContainer>) -> Result<Vec<LispType>, &'static str> {
     let mut res: Vec<LispType> = vec![];
     for container in input {
@@ -91,7 +95,7 @@ pub fn create_lisptypes(input: Vec<TokenContainer>) -> Result<Vec<LispType>, &'s
                         args.push(lt);
                     }
                 }
-                ChildrenType::Else(e) => args.push(LispType::new(&[e])?),
+                ChildrenType::Else(e) => args.push(LispType::new(&[e], true)?),
             }
         }
 

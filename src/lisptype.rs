@@ -1,6 +1,6 @@
 use std::panic;
 
-use crate::expression::Expression;
+use crate::{actaeon::Actaeon, expression::Expression};
 
 #[derive(Clone, Debug)]
 pub enum LispType {
@@ -10,14 +10,17 @@ pub enum LispType {
     Expression(Expression),
     Symbol(String),
     Atom(String, Box<LispType>),
+    Actaeon(Actaeon),
 }
 
 impl LispType {
-    pub fn new(args: &[String]) -> Result<Self, &'static str> {
+    pub fn new(args: &[String], flag: bool) -> Result<Self, &'static str> {
         if args.len() == 1 {
             if let Ok(n) = args[0].parse::<f64>() {
                 return Ok(Self::Number(n));
-            } else if args[0].chars().nth(0).unwrap() == '"' {
+            } else if args[0].chars().nth(0).unwrap() == '\'' {
+                return Ok(Self::Symbol(args[0].to_string()));
+            } else if args[0].chars().nth(0).unwrap() == '"' || flag {
                 return Ok(Self::String(args[0].to_string()));
             } else if args[0] == "t" {
                 return Ok(Self::Bool(true));
@@ -61,6 +64,7 @@ impl LispType {
             Self::Bool(b) => Ok(Self::Bool(*b)),
             Self::Symbol(s) => Ok(Self::Symbol((*s).clone())),
             Self::Atom(_, _) => Err("Cannot return atom!"),
+            Self::Actaeon(_) => unreachable!(),
         }
     }
 
@@ -79,6 +83,10 @@ impl LispType {
     pub fn num(&self, vars: &mut Vec<Self>) -> Result<f64, &'static str> {
         match self {
             Self::Number(n) => Ok(*n),
+            // Self::Bool(b) => match *b {
+            //     true => Ok(1.),
+            //     false => Ok(0.),
+            // },
             Self::Symbol(s) => {
                 let mut res = 0.;
                 let mut flag = true;
@@ -132,6 +140,7 @@ impl LispType {
         }
     }
 
+    /// Convert a all implemented LispTypes into LispType::String,
     pub fn to_string(&self, vars: &mut Vec<LispType>) -> Result<String, &'static str> {
         match self {
             Self::String(s) => Ok(s.to_string()),
@@ -160,9 +169,11 @@ impl LispType {
                 Ok(res)
             }
             Self::Atom(a, b) => Ok(format!("( {} {} )", a, b.to_string(vars)?)),
+            Self::Actaeon(_) => Err("Cannot convert actaeon to string."),
         }
     }
 
+    /// Convert a LispType::Symbol to a LispType::String
     pub fn to_string_from_symbol(&self) -> Result<String, &'static str> {
         match self {
             Self::Symbol(s) => Ok(s.to_string()),

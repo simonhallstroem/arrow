@@ -20,7 +20,7 @@ fn test_variables() -> Result<(), &'static str> {
 
     let res = test.run(&mut vec![])?;
 
-    assert_eq!(res.num(&mut vec![])?, 4.);
+    assert_eq!(res.num(&mut vec![])?, 2.);
     Ok(())
 }
 

@@ -11,8 +11,7 @@ has to be programed in it's lisp-like programming language
 NET-Script. This approach should allow the programmer to spend less
 time configuring and programing the back-end.
 
-But it can also be used as a stand alone interpreter, that executes
-files. It can also be used in a shell like environment.
+But it can also be used as a stand alone interpreter in a shell like environment.
 
 * Compile it
 First you have to clone this repository. You must have the rust
@@ -38,6 +37,21 @@ Now, you can execute the program with the following command:
 #+begin_src sh
 $ ./target/release/container repl
 > 
+#+end_src
+
+* Run it
+Now that the repl is compiled, the repl can be used to create evaluate
+code. If the input isn't a function, it will execute immediately. If
+it's a function, it must be called.
+
+#+begin_src sh
+> (* 5 5)
+25
+> (defun 'ret [] (return 5))
+5
+> (defun 'greet [] (print "hello"))
+"hello"
+nil
 #+end_src
 
 * Documentation
